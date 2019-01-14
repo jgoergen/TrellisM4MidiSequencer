@@ -1,54 +1,55 @@
-/* Arpeggiator Synth for Adafruit Neotrellis M4
- *  by Collin Cunningham for Adafruit Industries, inspired by Stretta's Polygome
- *  https://www.adafruit.com/product/3938
- * 
- *  Change color, scale, pattern, bpm, and waveform variables in settings.h file!
- * 
- */
-
 #include <Adafruit_ADXL343.h>
 #include <Adafruit_NeoTrellisM4.h>
 
-#include "settings.h"
+#define NULL_KEY              255
+#define UPDATE_RATE           32 // number of mode updates per beat
 
-#define WIDTH           8
-#define HEIGHT          4
-#define N_BUTTONS       WIDTH * HEIGHT
-#define ARP_NOTE_COUNT  6
-#define NULL_INDEX      255
+// SETTINGS ///////////////////////////////////////////////////////
 
-unsigned long prevReadTime = 0L; // Keypad polling timer
-uint8_t quantizedDivision = 4;      // Quantization division, 2 = half note
-boolean pressed[N_BUTTONS] = {false}; // Pressed state for each button
-uint8_t pitchMap[N_BUTTONS];
-uint8_t arpSeqIndex[N_BUTTONS] = {NULL_INDEX}; // Current place in button arpeggio sequence
-uint8_t arpButtonIndex[N_BUTTONS] = {NULL_INDEX}; // Button index being played for each actual pressed button
-unsigned long beatInterval = 0; // ms/beat
-unsigned long prevArpTime  = 0L;
-boolean holdActive = false;
-int last_xbend = 0;
-int last_ybend = 0;
+#define DEFAULT_BPM           120 
+#define BRIGHTNESS            155
+#define DEFAULT_MIDI_CHANNEL  0
+#define DEFAULT_MODE          1
+#define BUTTON_HOLD_TIME      600
+#define BUTTON_FAST_TIME      110
+#define MIN_BPM_VALUE         60
+#define BPM_INCREMENT         5
+#define DEFAULT_NOTE_VOLUME   127
+
+///////////////////////////////////////////////////////////////////
+
+unsigned long states[32];
+unsigned long lastBeatTime = 0;
+unsigned long lastClockTime = 0;
+int lastXBend = 0;
+int lastYBend = 0;
 int bpm = DEFAULT_BPM;
+int beatInterval = 0;
+int clockTimeInterval = 0;
+int mode = DEFAULT_MODE;
+int lastFastClick = NULL_KEY;
+int lastKeyEventTime = 0;
+bool notes[12] = {true, true, true, true, true, true, true, true, true, true, true, true};
+int octave = 3;
+bool inSystemMenu = false;
+uint8_t bpmFadeCounter = 0;
 
 Adafruit_NeoTrellisM4 trellis = Adafruit_NeoTrellisM4();
 Adafruit_ADXL343 accel = Adafruit_ADXL343(123, &Wire1);
 
-void setup(){
+void setup() {
 
   Serial.begin(115200);
-  Serial.println("Arp Synth ...");
+  Serial.println("Starting Setup");
 
   trellis.begin();
-  trellis.setBrightness(255);
-  trellis.enableUSBMIDI(true);
-  trellis.setUSBMIDIchannel(MIDI_CHANNEL);
+  trellis.setBrightness(BRIGHTNESS);
   trellis.enableUARTMIDI(true);
-  trellis.setUARTMIDIchannel(MIDI_CHANNEL);
-  
-  //Set up the notes for grid
-  writePitchMap();
-  audioSetup(); // comment out this line for serial debugging
+  trellis.enableUSBMIDI(true);
+  changeMidiChannel(DEFAULT_MIDI_CHANNEL);
   updateBPM(DEFAULT_BPM);
+  Serial.println("Midi Setup");
+  
   clearAllButtons();
 
   if(!accel.begin()) {
@@ -56,6 +57,10 @@ void setup(){
     Serial.println("No accelerometer found");
     while(1);
   }
+
+  changeMode(1);
+  
+  Serial.println("Completed Setup");
 }
 
 void loop() {
@@ -63,257 +68,370 @@ void loop() {
   trellis.tick();
   unsigned long t = millis();
 
+  // process inputs
+  processKeyEvents(t);
+  processTiltSensors();
+
+  if ((t - lastClockTime) >= clockTimeInterval) {
+  
+    trellis.sendTimingClock();
+    lastClockTime = t;
+  }
+
+  // update mode every beat
+  if ((t - lastBeatTime) >= beatInterval) {
+
+    // update bpm fader
+    bpmFadeCounter ++;
+    if (bpmFadeCounter == 32) bpmFadeCounter = 0;
+
+    if (inSystemMenu) {
+
+      drawSystemMenu();
+      
+    } else {
+    
+      updateMode(lastXBend, lastYBend);
+    }
+    
+    lastBeatTime = t;
+    drawSystemKeys();
+  }
+  
+  trellis.sendMIDI();
+}
+
+// MISC FUNCTIONS ///////////////////////////////////////////////////////////////
+
+void processTiltSensors() {
+
+  // Check for accelerometer
+  sensors_event_t event;
+  accel.getEvent(&event);
+  
+  if (abs(event.acceleration.y) < 2.0) {  // 2.0 m/s^2
+ 
+    // don't make any bend unless they've really started moving it
+    lastYBend = 8192; // 8192 means no bend
+ 
+  } else {
+ 
+    if (event.acceleration.y > 0) {
+ 
+      lastYBend = ofMap(event.acceleration.y, 2.0, 10.0, 8192, 0, true);  // 2 ~ 10 m/s^2 is downward bend
+ 
+    } else {
+ 
+      lastYBend = ofMap(event.acceleration.y, -2.0, -10.0, 8192, 16383, true);  // -2 ~ -10 m/s^2 is upward bend
+    }
+  }
+
+  if (abs(event.acceleration.x) < 2.0) {  // 2.0 m/s^2
+
+    // don't make any bend unless they've really started moving it
+    lastXBend = 0;
+
+  } else {
+
+    if (event.acceleration.x > 0) {
+
+      lastXBend = ofMap(event.acceleration.x, 2.0, 10.0, 0, 127, true);  // 2 ~ 10 m/s^2 is upward bend
+
+    } else {
+
+      lastXBend = ofMap(event.acceleration.x, -2.0, -10.0, 0, 127, true);  // -2 ~ -10 m/s^2 is downward bend
+    }
+  }
+}
+
+void processKeyEvents(unsigned long t) {
+
+  // TODO: fix double clicking
+  // if it's been a moment, stop waiting for a double click
+  if (lastFastClick != NULL_KEY && t - lastKeyEventTime > BUTTON_FAST_TIME) {
+
+    lastFastClick = NULL_KEY;
+  }
+  
+  // handle key presses
   while (trellis.available()) {
+
+    lastKeyEventTime = t;
+
+    //Serial.println(t - states[i]);
 
     keypadEvent e = trellis.read();
     uint8_t i = e.bit.KEY;
 
     if (e.bit.EVENT == KEY_JUST_PRESSED) {
       
-      if (!HOLD_ENABLED) { // Normal mode
-
-        pressed[i] = true;
-
-      } else { // Hold / toggle mode 
-
-        if (pressed[i] == true) { // if button is active, deactivate
-
-          pressed[i] = false;     
-          stopArp(i);
-
-        } else { 
-
-          pressed[i] = true; // if button is inactive, activate
-        }
-      }
-    }
+      // key down
+      states[i] = t;
+      sendModeKeyEvent(i, 0);
     
-    else if (e.bit.EVENT == KEY_JUST_RELEASED) {
+    } else if (e.bit.EVENT == KEY_JUST_RELEASED) {
 
-        if (!HOLD_ENABLED) { // Normal mode, responds to button release
+      if (t - states[i] > BUTTON_HOLD_TIME) {
 
-          pressed[i] = false;
-          stopArp(i);
+        // it's a long press
+        sendModeKeyEvent(i, 2);
+
+      // TODO: Fix double pressing !!
+      } else if (1==2 && t - states[i] < BUTTON_FAST_TIME) {
+
+        // it's a fast press
+        if (lastFastClick == i) {
+
+          // it's been double clicked
+          lastFastClick = NULL_KEY;
+          sendModeKeyEvent(i, 3);
+
+        } else {
+
+          lastFastClick = i;
         }
+      } else {
+
+        // it's just a normal press
+        sendModeKeyEvent(i, 1);
       }
-  }
 
-  // INTERNAL CLOCK
-  if ((t - prevArpTime) >= beatInterval) {
-
-    // play arp notes
-    for (uint8_t i = 0; i < N_BUTTONS; i++)
-      if (pressed[i])
-        playArp(i);
-
-    prevArpTime = t;
-  }
-
-  // Check for accelerometer
-  sensors_event_t event;
-  accel.getEvent(&event);
-  int xbend = 0;
-  int ybend = 0;
-  bool changed = false;
-  
-  if (abs(event.acceleration.y) < 2.0) {  // 2.0 m/s^2
- 
-    // don't make any bend unless they've really started moving it
-    ybend = 8192; // 8192 means no bend
- 
-  } else {
- 
-    if (event.acceleration.y > 0) {
- 
-      ybend = ofMap(event.acceleration.y, 2.0, 10.0, 8192, 0, true);  // 2 ~ 10 m/s^2 is downward bend
- 
-    } else {
- 
-      ybend = ofMap(event.acceleration.y, -2.0, -10.0, 8192, 16383, true);  // -2 ~ -10 m/s^2 is upward bend
+      // clear press time
+      states[i] = 0;
     }
   }
+}
 
-  if (ybend != last_ybend) {
+void quitMode(int which) {
 
-    Serial.print("Y pitchbend: "); Serial.println(ybend);
-    trellis.pitchBend(ybend);
-    last_ybend = ybend;
-    changed = true;
+  switch(mode) {
+
+    case 1: Mode1_Quit();
+      break;
+
+    case 2: Mode2_Quit();
+      break;
+
+    case 3: Mode3_Quit();
+      break;
+
+    case 4: Mode4_Quit();
+      break;
+
+    case 24: Mode24_Quit();
+      break;
+
+    case 25: Mode25_Quit();
+      break;
+
+    case 26: Mode26_Quit();
+      break;
+
+    case 27: Mode27_Quit();
+      break;
+
+    case 28: Mode28_Quit();
+      break;
   }
+}
 
-  if (abs(event.acceleration.x) < 2.0) {  // 2.0 m/s^2
+void changeMode(int which) {
 
-    // don't make any bend unless they've really started moving it
-    xbend = 0;
+  quitMode(mode);
+  mode = which;
 
-  } else {
+  switch(mode) {
 
-    if (event.acceleration.x > 0) {
+    case 1: Mode1_Init();
+      break;
 
-      xbend = ofMap(event.acceleration.x, 2.0, 10.0, 0, 127, true);  // 2 ~ 10 m/s^2 is upward bend
+    case 2: Mode2_Init();
+      break;
 
-    } else {
+    case 3: Mode3_Init();
+      break;
 
-      xbend = ofMap(event.acceleration.x, -2.0, -10.0, 0, 127, true);  // -2 ~ -10 m/s^2 is downward bend
+    case 4: Mode4_Init();
+      break;
+
+    case 24: Mode24_Init();
+      break;
+
+    case 25: Mode25_Init();
+      break;
+
+    case 26: Mode26_Init();
+      break;
+
+    case 27: Mode27_Init();
+      break;
+
+    case 28: Mode28_Init();
+      break;
+  }
+}
+
+void sendModeKeyEvent(uint8_t key, uint8_t type) {
+
+  if (type != 0 && inSystemMenu) {
+      
+    inSystemMenu = false;
+    
+    // catch mode changes
+    if (key < 4) {
+
+      changeMode(key + 1);
+      return;
     }
-  }
-
-  if (xbend != last_xbend) {
   
-    Serial.print("X mod: "); Serial.println(xbend);
+    // catch global settings
+    if (key > 23) {
   
-    if (MIDI_OUT) {
-  
-      trellis.controlChange(MIDI_XCC, xbend);
+      changeMode(key);
+      return;
     }
-  
-    last_xbend = xbend;
+
+    return;
+  }
+    
+  if (key == 31) {
+
+    if (type != 0 && !inSystemMenu) {
+      
+      inSystemMenu = true;
+      clearAllButtons();
+      
+    } else if (type != 0 && inSystemMenu) {
+
+      inSystemMenu = false;
+    }
+
+    return;
   }
 
-  if (MIDI_OUT) {
+  switch(mode) {
 
-    trellis.sendMIDI();
+    case 1: Mode1_KeyEvent(key, type);
+      break;
+
+    case 2: Mode2_KeyEvent(key, type);
+      break;
+
+    case 3: Mode3_KeyEvent(key, type);
+      break;
+
+    case 4: Mode4_KeyEvent(key, type);
+      break;
+
+    case 24: Mode24_KeyEvent(key, type);
+      break;
+
+    case 25: Mode25_KeyEvent(key, type);
+      break;
+
+    case 26: Mode26_KeyEvent(key, type);
+      break;
+
+    case 27: Mode27_KeyEvent(key, type);
+      break;
+
+    case 28: Mode28_KeyEvent(key, type);
+      break;
   }
-  
-  prevReadTime = t;
+}
+
+void updateMode(int xBend, int yBend) {
+
+  switch(mode) {
+
+    case 1: Mode1_Update(xBend, yBend);
+      break;
+
+    case 2: Mode2_Update(xBend, yBend);
+      break;
+
+    case 3: Mode3_Update(xBend, yBend);
+      break;
+
+    case 4: Mode4_Update(xBend, yBend);
+      break;
+
+    case 24: Mode24_Update(xBend, yBend);
+      break;
+
+    case 25: Mode25_Update(xBend, yBend);
+      break;
+
+    case 26: Mode26_Update(xBend, yBend);
+      break;
+
+    case 27: Mode27_Update(xBend, yBend);
+      break;
+
+    case 28: Mode28_Update(xBend, yBend);
+      break;
+  }
+}
+
+void changeMidiChannel(int channel) {
+
+  trellis.setUSBMIDIchannel(DEFAULT_MIDI_CHANNEL);
+  trellis.setUARTMIDIchannel(DEFAULT_MIDI_CHANNEL);
+}
+
+void updateBPM(int newBPM) {
+
+  bpm = newBPM;
+  beatInterval = ((60L * 1000L) / bpm) / UPDATE_RATE;
+  clockTimeInterval = (((60L * 1000L) / bpm) / 4L) * 24L;
+  Serial.print("BPM set to ");
+  Serial.println(newBPM);
 }
 
 void clearAllButtons() {
 
-  // TODO: this needs to loop through all the keys and do a clear key instead
-  trellis.fill(offColor);
+  trellis.fill(0x000000);
 }
 
-void clearButton(int index) {
+void drawSystemKeys() {
 
-  // offColor offColorBlack
-  // TODO: this needs to write the appropriate color to the key based on whether it's a black or white key
-  trellis.setPixelColor(index, offColor);
+  trellis.setPixelColor(31, rgbToHex(80 + (bpmFadeCounter * 5), 0, 0));
 }
 
-void activateButton(int index) {
+void drawSystemMenu() {
 
-  // onColor onColorBlack
-  // TODO: this needs to write the appropriate color to the key based on whether it's a black or white key
-  trellis.setPixelColor(buttonIndex, onColor);
-}
-
-void updateBPM(int bpm) {
-
-  BPM = bpm;
-  beatInterval = (60000L / BPM) / quantizedDivision;
-}
-
-void writePitchMap() {
-
-  for (int i = 0; i < N_BUTTONS; i++) {
+  // mode 1
+  trellis.setPixelColor(0, rgbToHex(100, 140, 40));
+  // mode 2
+  trellis.setPixelColor(1, rgbToHex(100, 140, 80));
+  // mode 3
+  trellis.setPixelColor(2, rgbToHex(100, 140, 120));
+  // mode 4
+  trellis.setPixelColor(3, rgbToHex(100, 140, 160));
   
-    int octMod = i/8 + OCTAVE;
-    pitchMap[i] = SYNTH_SCALE[i%8] + (octMod*12);
-  }
-}
-
-void playArp(uint8_t buttonIndex) {
-
-  uint8_t seqIndex, seqButtonIndex, seqNote, x, y;
-
-  // if not starting arp, then increment index
-  if (arpSeqIndex[buttonIndex] == NULL_INDEX) 
-    seqIndex = 0;
-  else 
-    seqIndex = arpSeqIndex[buttonIndex] + 1;
-
-  // Loop sequence
-  if (seqIndex >= ARP_NOTE_COUNT)
-    seqIndex = 0;
-
-  // Find current button coordinates
-  y = buttonIndex / WIDTH;
-  x = buttonIndex - (y * WIDTH);
-
-  // Reference to root button for Hold mode
-  uint8_t rootY = y;
-  uint8_t rootX = x;
-
-  // Add note offsets
-  x = x + ARPEGGIATOR_PATTERN[seqIndex][0];
-  y = y + ARPEGGIATOR_PATTERN[seqIndex][1];
-
-  // Wrap notes to grid
-  if (x >= WIDTH)
-    x %= WIDTH;
-  
-  if (y >= HEIGHT) 
-    y %= HEIGHT;
-
-  // Find new note and index
-  seqNote = findNoteFromXY(x, y);
-  seqButtonIndex = indexFromXY(x, y);
-
-  // Stop prev note in sequence
-  stopNoteForButton(arpButtonIndex[buttonIndex]);
-
-  // Store new note
-  arpSeqIndex[buttonIndex] = seqIndex;
-  arpButtonIndex[buttonIndex] = seqButtonIndex;
-
-  // Play new note
-  playNoteForButton(seqButtonIndex);
-
-  // If in Hold mode, light root button
-  if (HOLD_ENABLED) 
-    trellis.setPixelColor(indexFromXY(rootX, rootY), holdColor);
-}
-
-void stopArp(uint8_t button) {
-
-  // Stop playing the note
-  stopNoteForButton(arpButtonIndex[button]);
-
-  // Store an invalid button index in its place
-  arpSeqIndex[button] = NULL_INDEX;  //check for invalid
-
-  // If in Hold mode, light root button
-  if (HOLD_ENABLED) 
-    clearButton(button);
+  // setting 1
+  trellis.setPixelColor(24, rgbToHex(255, 0, 40));
+  // setting 2
+  trellis.setPixelColor(25, rgbToHex(255, 0, 80));
+  // setting 3
+  trellis.setPixelColor(26, rgbToHex(255, 0, 120));
+  // setting 4
+  trellis.setPixelColor(27, rgbToHex(255, 0, 160));
 }
 
 uint8_t indexFromXY(uint8_t x, uint8_t y) {
 
-  return (y * WIDTH + x);
+  return (y * 8 + x);
 }
 
-uint8_t findNoteFromXY(uint8_t x, uint8_t y) {
+uint8_t findXFromIndex(uint8_t buttonIndex) {
   
-  return pitchMap[y * WIDTH + x];
+  return buttonIndex - ((buttonIndex / 8) * 8);
 }
 
-uint8_t findNoteFromIndex(uint8_t buttonIndex) {
+uint8_t findYFromIndex(uint8_t buttonIndex) {
   
-  uint8_t x, y;
-  y = buttonIndex / WIDTH;
-  x = buttonIndex - (y * WIDTH);
-  return findNoteFromXY(x, y);
-}
-
-void playNoteForButton(uint8_t buttonIndex) {
-
-  trellis.noteOn(findNoteFromIndex(buttonIndex), 100);
-  activateButton(button);
-}
-
-void stopNoteForButton(uint8_t buttonIndex) {
-
-  trellis.noteOff(findNoteFromIndex(buttonIndex), 0);
-  clearButton(button);
-}
-
-void debugLed(bool light) {
-
-  if (light) 
-     trellis.setPixelColor(0, blue);
-  else 
-     trellis.setPixelColor(0, 0);
+  return buttonIndex / 8;
 }
 
 // floating point map
@@ -341,3 +459,48 @@ float ofMap(float value, float inputMin, float inputMax, float outputMin, float 
 
     return outVal;
 }
+
+long rgbToHex(int r, int g, int b) {
+
+  if (r < 0) r = 0;
+  if (g < 0) g = 0;
+  if (b < 0) b = 0;
+  if (r > 255) r = 255;
+  if (g > 255) g = 255;
+  if (b > 255) b = 255;
+
+  return (r << 16) | (g << 8) | b;
+}
+
+char stringFromNoteIndex(int index) {
+  
+  // 0:c 1:c# 2:d 3:d# 4:e 5:f 6:f# 7:g 8:g# 9:a 10:a# 11:b
+  switch(index) {
+
+    case 0:
+      return 'C';
+    case 1:
+      return 'c';
+    case 2:
+      return 'D';
+    case 3:
+      return 'd';
+    case 4:
+      return 'E';
+    case 5:
+      return 'F';
+    case 6:
+      return 'f';
+    case 7:
+      return 'G';
+    case 8:
+      return 'g';
+    case 9:
+      return 'A';
+    case 10:
+      return 'a';
+    case 11:
+      return 'B';
+  }
+}
+
