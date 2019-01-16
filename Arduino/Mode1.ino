@@ -4,7 +4,7 @@
 
 #define MODE1_FLOW_SEPERATION           10
 #define MODE1_FLOW_SPEED                1
-#define MODE1_COL_FLOW_SPEED            0.25
+#define MODE1_COL_FLOW_SPEED            1
 
 ///////////////////////////////////////////////////////////////////
 

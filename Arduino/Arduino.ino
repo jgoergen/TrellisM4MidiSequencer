@@ -8,7 +8,7 @@
 
 #define DEFAULT_BPM           120 
 #define DEFAULT_OCTAVE        3
-#define DEFAULT_BRIGHTNESS    155
+#define DEFAULT_BRIGHTNESS    100
 #define DEFAULT_MIDI_CHANNEL  0
 #define DEFAULT_MODE          1
 #define BUTTON_HOLD_TIME      600

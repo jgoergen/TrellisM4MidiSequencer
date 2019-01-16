@@ -15,7 +15,7 @@ extern uint8_t bpmFadeCounter;
 bool Mode24KeyText[32];
 int Mode24KeyTextBrightness = 0;
 
-int FONT0[][2] = {{4, 0}, {0, 1}, {1, 1}, {0, 2}, {1, 2}};
+int FONT0[][2] = {{6, 0}, {0, 1}, {1, 1}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
 int FONT1[][2] = {{4, 0}, {0, 0}, {0, 1}, {0, 2}, {0, 3}};
 int FONT2[][2] = {{7, 0}, {0, 0}, {1, 0}, {1, 1}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
 int FONT3[][2] = {{7, 0}, {0, 0}, {1, 0}, {0, 1}, {1, 1}, {0, 2}, {0, 3}, {1, 3}};
@@ -42,6 +42,8 @@ void Mode24_Update(int xBend, int yBend) {
 
   if (Mode24KeyTextBrightness > 0)
     Mode24KeyTextBrightness -= 2;
+  else
+    Mode24KeyTextBrightness = 0;
 
   Mode24_DrawVals();
   Mode24_DrawCurrentBPM(rgbToHex(150, bpmFadeCounter * 5, 250));  
