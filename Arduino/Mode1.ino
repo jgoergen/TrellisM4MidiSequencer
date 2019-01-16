@@ -2,10 +2,9 @@
 
 // SETTINGS ///////////////////////////////////////////////////////
 
-uint32_t keyboardKeyColor =         0xFF00FF; // color of activated buttons
-uint32_t keyboardKeySharpColor =    0x00FF00; // color of activated buttons that represent black keys
-uint32_t keyboardHighLightColor =   0xDD77DD; // color of all matching notes over all octaves
-uint32_t keyboardHighLightSharpColor = 0x77FF77; // color of all matching notes over all octaves that represent black keys
+#define MODE1_FLOW_SEPERATION           10
+#define MODE1_FLOW_SPEED                1
+#define MODE1_COL_FLOW_SPEED            0.25
 
 ///////////////////////////////////////////////////////////////////
 
@@ -20,10 +19,33 @@ extern Adafruit_ADXL343 accel;
 
 uint8_t Mode1NoteMap[32];
 unsigned long Mode1NotesPressed[32];
+float Mode1Flow1Val = 0;
+float Mode1Flow2Val = 0;
+float Mode1Flow3Val = 0;
+float Mode1Flow4Val = 0;
+float Mode1Flow1Speed = 0;
+float Mode1Flow2Speed = 0;
+float Mode1Flow3Speed = 0;
+float Mode1Flow4Speed = 0;
+float ColFlowVal = 0;
+float ColFlowSpeed = 0;
 
 void Mode1_Init() {
 
   Serial.println("Mode 1 Initialized");
+
+  Mode1Flow1Val = 0;
+  Mode1Flow2Val = MODE1_FLOW_SEPERATION;
+  Mode1Flow3Val = MODE1_FLOW_SEPERATION * 2;
+  Mode1Flow4Val = MODE1_FLOW_SEPERATION * 3;
+  Mode1Flow1Speed = MODE1_FLOW_SPEED;
+  Mode1Flow2Speed = MODE1_FLOW_SPEED;
+  Mode1Flow3Speed = MODE1_FLOW_SPEED;
+  Mode1Flow4Speed = MODE1_FLOW_SPEED;
+  ColFlowVal = 0;
+  ColFlowSpeed = MODE1_COL_FLOW_SPEED;
+
+  Mode1_SetupNoteMap();
   clearAllButtons();
   Mode1_DrawAllKeyboardKeys();
 
@@ -40,9 +62,23 @@ void Mode1_Quit() {
 
 void Mode1_Update(int xBend, int yBend) {
 
-  for (int i = 0; i < 32; i++)
-    if (Mode1NotesPressed[i] > 0)
-      Mode1_DrawKey(i, true);
+  Mode1_UpdateFlow();
+}
+
+void Mode1_UpdateFlow() {
+  
+  // run flow
+  Mode1Flow1Val += Mode1Flow1Speed;
+  Mode1Flow2Val += Mode1Flow2Speed;
+  Mode1Flow3Val += Mode1Flow3Speed;
+  Mode1Flow4Val += Mode1Flow4Speed;
+  ColFlowVal += ColFlowSpeed;
+  if (Mode1Flow1Val > 255 || Mode1Flow1Val < 0) Mode1Flow1Speed *= -1;
+  if (Mode1Flow2Val > 255 || Mode1Flow2Val < 0) Mode1Flow2Speed *= -1;
+  if (Mode1Flow3Val > 255 || Mode1Flow3Val < 0) Mode1Flow3Speed *= -1;
+  if (Mode1Flow4Val > 255 || Mode1Flow4Val < 0) Mode1Flow4Speed *= -1;
+  if (ColFlowVal > 255 || ColFlowVal < 0) ColFlowSpeed *= -1;
+  Mode1_DrawAllKeyboardKeys();
 }
 
 void Mode1_KeyEvent(uint8_t key, uint8_t type) {
@@ -78,7 +114,6 @@ void Mode1_KeyEvent(uint8_t key, uint8_t type) {
     
       // regular press
       Mode1NotesPressed[key] = 0;
-      Mode1_DrawKey(key, false);
       trellis.noteOff((12 * Mode1_GetNoteOctaveFromKey(key)) + Mode1_GetNoteIndexFromKey(key), DEFAULT_NOTE_VOLUME);
       break;
 
@@ -86,7 +121,6 @@ void Mode1_KeyEvent(uint8_t key, uint8_t type) {
 
       // long press      
       Mode1NotesPressed[key] = 0;
-      Mode1_DrawKey(key, false);
       trellis.noteOff((12 * Mode1_GetNoteOctaveFromKey(key)) + Mode1_GetNoteIndexFromKey(key), DEFAULT_NOTE_VOLUME);
       break;
       
@@ -143,32 +177,65 @@ bool Mode1_IsSharpKey(uint8_t key) {
   uint8_t note = Mode1NoteMap[key];
 
   if (note == 1 || note == 3 || note == 6 || note == 8 || note == 10)
-      return true;
-    else
-      return false;
+    return true;
+  else
+    return false;
 }
 
-void Mode1_DrawKey(uint8_t key, bool highlight) {
+void Mode1_DrawKey(uint8_t key) {
 
+  bool highlight = Mode1NotesPressed[key];
   bool sharp = Mode1_IsSharpKey(key);
+  int row = floor(key / 8);
+  int col = key % 8;
+  int colorBaseVal = 0;
+
+  switch(row) {
+    case 0:
+      colorBaseVal = Mode1Flow1Val;
+      break;
+    case 1:
+      colorBaseVal = Mode1Flow2Val;
+      break;
+    case 2:
+      colorBaseVal = Mode1Flow3Val;
+      break;
+    case 3:
+      colorBaseVal = Mode1Flow4Val;
+      break;
+  }
 
   if (highlight) {
 
     if (sharp)
-      trellis.setPixelColor(key, keyboardHighLightSharpColor);
+      trellis.setPixelColor(key, rgbToHex(100, 100, 100));
     else if (!sharp)
-      trellis.setPixelColor(key, keyboardHighLightColor);
+      trellis.setPixelColor(key, rgbToHex(255, 255, 255));
       
   } else {
     
-    if (sharp)
-      trellis.setPixelColor(key, keyboardKeySharpColor);
-    else
-      trellis.setPixelColor(key, keyboardKeyColor);
+    if (sharp) {
+
+      trellis.setPixelColor(
+        key, 
+        rgbToHex(
+          floor(155 - sin((col + (ColFlowVal / 32)) / 10) * 100),
+          floor((255 - colorBaseVal)),
+          0));
+    
+    } else {
+
+      trellis.setPixelColor(
+        key, 
+        rgbToHex(
+          floor(155 - sin((col + (ColFlowVal / 32)) / 10) * 100),
+          255 - colorBaseVal,
+          150));
+    }
   }
 }
 
-void Mode1_DrawAllKeyboardKeys() {
+void Mode1_SetupNoteMap() {
 
   uint8_t index = 0;
 
@@ -182,7 +249,7 @@ void Mode1_DrawAllKeyboardKeys() {
         Mode1NoteMap[index] = i;
 
         // draw it
-        Mode1_DrawKey(index, false);
+        Mode1_DrawKey(index);
         
         index ++;
 
@@ -191,4 +258,10 @@ void Mode1_DrawAllKeyboardKeys() {
       }
     }
   }
+}
+
+void Mode1_DrawAllKeyboardKeys() {
+
+  for (int i = 0; i < 31; i++) 
+    Mode1_DrawKey(i);
 }
