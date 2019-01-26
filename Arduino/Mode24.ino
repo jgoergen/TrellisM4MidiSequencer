@@ -1,4 +1,4 @@
-// DRUM SEQUENCER
+// BPM SELECTOR
 
 // SETTINGS ///////////////////////////////////////////////////////
 
@@ -11,6 +11,11 @@ extern int bpm;
 extern Adafruit_NeoTrellisM4 trellis;
 extern Adafruit_ADXL343 accel;
 extern uint8_t bpmFadeCounter;
+extern float colFlowVal;
+extern float flow1Val;
+extern float flow2Val;
+extern float flow3Val;
+extern float flow4Val;
 
 bool Mode24KeyText[32];
 int Mode24KeyTextBrightness = 0;
@@ -18,7 +23,7 @@ int Mode24KeyTextBrightness = 0;
 int FONT0[][2] = {{6, 0}, {0, 1}, {1, 1}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
 int FONT1[][2] = {{4, 0}, {0, 0}, {0, 1}, {0, 2}, {0, 3}};
 int FONT2[][2] = {{7, 0}, {0, 0}, {1, 0}, {1, 1}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
-int FONT3[][2] = {{7, 0}, {0, 0}, {1, 0}, {0, 1}, {1, 1}, {0, 2}, {0, 3}, {1, 3}};
+int FONT3[][2] = {{7, 0}, {0, 0}, {1, 0}, {0, 1}, {1, 1}, {1, 2}, {0, 3}, {1, 3}};
 int FONT4[][2] = {{5, 0}, {1, 0}, {0, 1}, {1, 1}, {1, 2}, {1, 3}};
 int FONT5[][2] = {{7, 0}, {0, 0}, {1, 0}, {0, 1}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
 int FONT6[][2] = {{6, 0}, {0, 0}, {0, 1}, {0, 2}, {1, 2}, {0, 3}, {1, 3}};
@@ -40,7 +45,7 @@ void Mode24_Quit() {
 
 void Mode24_Update(int xBend, int yBend) {
 
-  if (Mode24KeyTextBrightness > 0)
+  if (Mode24KeyTextBrightness > 1)
     Mode24KeyTextBrightness -= 2;
   else
     Mode24KeyTextBrightness = 0;

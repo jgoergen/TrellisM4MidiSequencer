@@ -1,4 +1,4 @@
-// SEQUENCER
+// NOTE MODIFIER
 
 // SETTINGS ///////////////////////////////////////////////////////
 
@@ -12,6 +12,11 @@ extern bool notes[12];
 extern int octave;
 extern Adafruit_NeoTrellisM4 trellis;
 extern Adafruit_ADXL343 accel;
+extern float colFlowVal;
+extern float flow1Val;
+extern float flow2Val;
+extern float flow3Val;
+extern float flow4Val;
 
 void Mode3_Init() {
 

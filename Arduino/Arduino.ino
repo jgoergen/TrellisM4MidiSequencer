@@ -8,14 +8,19 @@
 
 #define DEFAULT_BPM           120 
 #define DEFAULT_OCTAVE        3
-#define DEFAULT_BRIGHTNESS    100
+#define DEFAULT_BRIGHTNESS    60
 #define DEFAULT_MIDI_CHANNEL  0
-#define DEFAULT_MODE          1
+#define DEFAULT_MODE          2
 #define BUTTON_HOLD_TIME      600
 #define BUTTON_FAST_TIME      110
 #define MIN_BPM_VALUE         60
 #define BPM_INCREMENT         5
 #define DEFAULT_NOTE_VOLUME   127
+
+// these are used for visuals on some modes
+#define FLOW_SEPERATION       10
+#define FLOW_SPEED            0.5
+#define COL_FLOW_SPEED        0.75
 
 ///////////////////////////////////////////////////////////////////
 
@@ -36,6 +41,24 @@ bool notes[12] = {true, true, true, true, true, true, true, true, true, true, tr
 int octave = DEFAULT_OCTAVE;
 bool inSystemMenu = false;
 uint8_t bpmFadeCounter = 0;
+uint8_t noteMap[32];
+float flow1Val = 0;
+float flow2Val = 0;
+float flow3Val = 0;
+float flow4Val = 0;
+float flow1Speed = 0;
+float flow2Speed = 0;
+float flow3Speed = 0;
+float flow4Speed = 0;
+float colFlowSpeed = 0;
+float colFlowVal = 0;
+bool modifierActive = false;
+bool chords[4][12] = {
+  {true, true, true, true, true, true, true, true, true, true, true, true},
+  {true, true, true, true, true, true, true, true, true, true, true, true},
+  {true, true, true, true, true, true, true, true, true, true, true, true},
+  {true, true, true, true, true, true, true, true, true, true, true, true}
+};
 
 Adafruit_NeoTrellisM4 trellis = Adafruit_NeoTrellisM4();
 Adafruit_ADXL343 accel = Adafruit_ADXL343(123, &Wire1);
@@ -62,9 +85,12 @@ void setup() {
   }
 
   trellis.autoUpdateNeoPixels(false);
-  changeMode(1);
+  changeMode(DEFAULT_MODE);
   
   Serial.println("Completed Setup");
+
+  resetFlowValues();
+  Intro_Run();
 }
 
 void loop() {
@@ -97,6 +123,7 @@ void loop() {
       
     } else {
     
+      updateFlow();
       updateMode(lastXBend, lastYBend);
     }
     
@@ -109,6 +136,130 @@ void loop() {
 }
 
 // MISC FUNCTIONS ///////////////////////////////////////////////////////////////
+
+void noteOn(int key, int volume) {
+
+  if (inSystemMenu)
+    return;
+
+  if (modifierActive) {
+    
+      // TODO: note modifier stuff happens here
+
+  }
+
+  trellis.noteOn(
+    (12 * getNoteOctaveFromKey(key)) + getNoteIndexFromKey(key), 
+    volume);
+}
+
+void noteOff(int key, int volume) {
+
+  trellis.noteOff(
+    (12 * getNoteOctaveFromKey(key)) + getNoteIndexFromKey(key), 
+    volume);
+}
+
+int getNoteIndexFromKey(uint8_t key) {
+
+  uint8_t index = 0;
+  
+  while (index < 32) {
+      
+    for (int i = 0; i < 12; i++) {
+
+      if (notes[i]) {
+
+        if (index == key)
+          return i;
+
+        index ++;
+      }
+    }
+  }
+}
+
+void setupNoteMap() {
+
+  uint8_t index = 0;
+
+  while (index < 31) {
+      
+    for (int i = 0; i < 12; i++) {
+
+      if (notes[i]) {
+
+        // update note map
+        noteMap[index] = i;
+        index ++;
+
+        if (index > 30)
+          return;
+      }
+    }
+  }
+}
+
+int getNoteOctaveFromKey(uint8_t key) {
+
+  uint8_t index = 0;
+  int noteOctave = octave;
+  
+  while (index < 32) {
+      
+    for (int i = 0; i < 12; i++) {
+
+      if (notes[i]) {
+
+        if (index == key)
+          return noteOctave;
+
+        index ++;
+      }
+    }
+
+    noteOctave ++;
+  }
+}
+
+bool isSharpKey(uint8_t key) {
+
+  uint8_t note = noteMap[key];
+
+  if (note == 1 || note == 3 || note == 6 || note == 8 || note == 10)
+    return true;
+  else
+    return false;
+}
+
+void resetFlowValues() {
+
+  flow1Val = 0;
+  flow2Val = FLOW_SEPERATION;
+  flow3Val = FLOW_SEPERATION * 2;
+  flow4Val = FLOW_SEPERATION * 3;
+  flow1Speed = FLOW_SPEED;
+  flow2Speed = FLOW_SPEED;
+  flow3Speed = FLOW_SPEED;
+  flow4Speed = FLOW_SPEED;
+  colFlowVal = 0;
+  colFlowSpeed = COL_FLOW_SPEED;
+}
+
+void updateFlow() {
+  
+  // run flow
+  flow1Val += flow1Speed;
+  flow2Val += flow2Speed;
+  flow3Val += flow3Speed;
+  flow4Val += flow4Speed;
+  colFlowVal += colFlowSpeed;
+  if (flow1Val > 255 || flow1Val < 0) flow1Speed *= -1;
+  if (flow2Val > 255 || flow2Val < 0) flow2Speed *= -1;
+  if (flow3Val > 255 || flow3Val < 0) flow3Speed *= -1;
+  if (flow4Val > 255 || flow4Val < 0) flow4Speed *= -1;
+  if (colFlowVal > 255 || colFlowVal < 0) colFlowSpeed *= -1;
+}
 
 void processTiltSensors() {
 
@@ -484,9 +635,9 @@ void drawSystemMenu() {
   // mode 1
   trellis.setPixelColor(0, rgbToHex(100, 140, 40));
   // mode 2
-  //trellis.setPixelColor(1, rgbToHex(100, 140, 80));
+  trellis.setPixelColor(1, rgbToHex(100, 140, 80));
   // mode 3
-  //trellis.setPixelColor(2, rgbToHex(100, 140, 120));
+  trellis.setPixelColor(2, rgbToHex(100, 140, 120));
   // mode 4
   //trellis.setPixelColor(3, rgbToHex(100, 140, 160));
   // mode 5

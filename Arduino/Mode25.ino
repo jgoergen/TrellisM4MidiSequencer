@@ -1,4 +1,4 @@
-// DRUM SEQUENCER
+// NOTE SELECTOR
 
 // SETTINGS ///////////////////////////////////////////////////////
 
@@ -7,7 +7,7 @@
 #define MODE25_NODE_OFF_COLOR               0x111111
 
 // https://www.pianoscales.org/chart.html
-const bool majorChords[12][12] = {
+const bool Mode25MajorChords[12][12] = {
   {true, false, true, false, true, true, false, true, false, true, false, true}, // c major 0 2 4 5 7 9 11
   {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 1 3 5 6 8 10 0
   {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 2 4 6 7 9 11 1
@@ -23,7 +23,7 @@ const bool majorChords[12][12] = {
 }; 
 
 // TODO: set these up!
-const bool minorChords[12][12] = {
+const bool Mode25MinorChords[12][12] = {
   {true, false, true, false, true, true, false, true, false, true, false, true}, // c major 0 2 4 5 7 9 11
   {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 1 3 5 6 8 10 0
   {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 2 4 6 7 9 11 1
@@ -39,7 +39,7 @@ const bool minorChords[12][12] = {
 }; 
 
 // TODO: set these up!
-const bool pentatonicChords[12][12] = {
+const bool Mode25PentatonicChords[12][12] = {
   {true, false, true, false, true, true, false, true, false, true, false, true}, // c major 0 2 4 5 7 9 11
   {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 1 3 5 6 8 10 0
   {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 2 4 6 7 9 11 1
@@ -64,6 +64,12 @@ extern int bpm;
 extern int octave;
 extern Adafruit_NeoTrellisM4 trellis;
 extern Adafruit_ADXL343 accel;
+extern float colFlowVal;
+extern float flow1Val;
+extern float flow2Val;
+extern float flow3Val;
+extern float flow4Val;
+extern bool chords[4][12];
 
 int Mode25SelectedCount = 0;
 
@@ -73,6 +79,7 @@ void Mode25_Init() {
   clearAllButtons();
   Mode25_DrawNotes();
   Mode25_DrawOctaves();
+  Mode25_DrawChords();
 }
 
 void Mode25_Quit() {
@@ -113,12 +120,25 @@ void Mode25_KeyEvent(uint8_t key, uint8_t type) {
       if (Mode25SelectedCount == 1 && key >= 24) {
 
         Mode25_SelectPreset(key - 24);
-      }      
+      }
+
+      // they pressed a chord key, recall it
+      if (key >= 27 && key <= 30) {
+
+        Mode25_RecallChord(key - 27);
+      }
+
       break;
 
     case 2:
 
       // long press
+
+      // they long pressed a chord key, save it
+      if (key >= 27 && key <= 30) {
+
+        Mode25_SetChord(key - 27);
+      }
 
       break;
       
@@ -186,6 +206,56 @@ void Mode25_DrawScales(bool visible) {
   }
 }
 
+void Mode25_DrawChords() {
+
+  trellis.setPixelColor(27, rgbToHex(80, 120, 200));
+  trellis.setPixelColor(28, rgbToHex(80, 120, 200));
+  trellis.setPixelColor(29, rgbToHex(80, 120, 200));
+  trellis.setPixelColor(30, rgbToHex(80, 120, 200));
+}
+
+void Mode25_RecallChord(int which) {
+
+  for (int i = 0; i < 12; i++)
+    notes[i] = chords[which][i];
+
+  // TODO: Need a better way to do effects like this
+
+  Mode25_DrawNotes();
+  trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
+  trellis.showPixels();
+  delay(3);
+  trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
+  trellis.showPixels();
+  delay(3);
+  trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
+  trellis.showPixels();
+  delay(3);
+  trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
+  trellis.showPixels();
+}
+
+void Mode25_SetChord(int which) {
+
+  for (int i = 0; i < 12; i++)
+    chords[which][i] = notes[i];
+
+  // TODO: Need a better way to do effects like this
+  
+  Mode25_DrawNotes();
+  trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
+  trellis.showPixels();
+  delay(3);
+  trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
+  trellis.showPixels();
+  delay(3);
+  trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
+  trellis.showPixels();
+  delay(3);
+  trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
+  trellis.showPixels();
+}
+
 void Mode25_SelectPreset(int which) {
 
   // get root note
@@ -197,15 +267,15 @@ void Mode25_SelectPreset(int which) {
   switch(which) {
 
     case 0:
-      memcpy(notes, majorChords[rootNote], 12 * sizeof(bool));
+      memcpy(notes, Mode25MajorChords[rootNote], 12 * sizeof(bool));
       break;
       
     case 1:
-      memcpy(notes, minorChords[rootNote], 12 * sizeof(bool));
+      memcpy(notes, Mode25MinorChords[rootNote], 12 * sizeof(bool));
       break;
 
     case 2:
-      memcpy(notes, pentatonicChords[rootNote], 12 * sizeof(bool));
+      memcpy(notes, Mode25PentatonicChords[rootNote], 12 * sizeof(bool));
       break;
   }
 
