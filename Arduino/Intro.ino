@@ -2,9 +2,9 @@
 
 // SETTINGS ///////////////////////////////////////////////////////
 
-#define INTRO_ANIMATION_FRAMES          100
-#define INTRO_FIRE_WAIT                 3
-#define INTRO_KEYS_TO_FIRE              40
+#define INTRO_ANIMATION_SPEED           13
+#define INTRO_ANIMATION_FRAMES          200
+#define INTRO_STEP_WAIT                 15
 
 ///////////////////////////////////////////////////////////////////
 
@@ -12,19 +12,21 @@ extern Adafruit_NeoTrellisM4 trellis;
 extern Adafruit_ADXL343 accel;
 
 int graphicSpaces[32] = {
-  0, 0, 1, 0, 1, 0, 0, 0,
-  0, 1, 2, 3, 2, 1, 0, 0,
-  0, 0, 1, 3, 1, 0, 0, 0,
-  0, 0, 0, 1, 0, 0, 0, 0,
+  9, 9, 1, 9, 9, 1, 9, 9,
+  9, 2, 6, 6, 6, 6, 2, 9,
+  9, 9, 3, 5, 5, 3, 9, 9,
+  9, 9, 9, 4, 4, 9, 9, 9,
 };
 
 int IntroKeyFrames[32];
-int IntroFired = 0;
 int IntroFireWait = 0;
+int IntroStep = 0;
 
 void Intro_Run() {
 
   Serial.println("Running Intro");
+  
+  // reset
   IntroFireWait = 0;
   for (int i = 0; i < 32; i++) {
 
@@ -34,12 +36,18 @@ void Intro_Run() {
 
   trellis.showPixels();
 
-  while (IntroFired < INTRO_KEYS_TO_FIRE) {
+  IntroStep = 1;
+
+  while (IntroStep < 10) {
+
+    bool IntroFoundOneToDisplay = false;
 
     // increment / animate keyframes
     for (int i = 0; i < 32; i++) {
 
       if (IntroKeyFrames[i] > 0) {
+
+        IntroFoundOneToDisplay = true;
 
         trellis.setPixelColor(
           i, 
@@ -52,25 +60,29 @@ void Intro_Run() {
       }
     }
 
-    // fire a new one?
-    if (IntroFireWait < 1) {
+    // fire a new buttons
+    if (IntroFireWait > INTRO_STEP_WAIT && IntroStep < 10) {
 
-      int newSpot = (int)random(32);
+      for (int i = 0; i < 32; i++)
+        if (graphicSpaces[i] == IntroStep)
+          IntroKeyFrames[i] = INTRO_ANIMATION_FRAMES;
 
-      if (graphicSpaces[newSpot] > 0) {
-          
-        IntroFireWait = INTRO_FIRE_WAIT;
-        IntroKeyFrames[newSpot] = INTRO_ANIMATION_FRAMES;
-        IntroFired ++;
-      }
+      IntroStep ++;
+      IntroFireWait = 0;
 
     } else {
 
-      IntroFireWait --;
+      IntroFireWait ++;
+    }
+
+    // is the animation done?
+    if (IntroFoundOneToDisplay == false && IntroStep >= 10) {
+
+      return;
     }
 
     trellis.showPixels();
-    delay(5);
+    delay(INTRO_ANIMATION_SPEED);
   }
 }
 

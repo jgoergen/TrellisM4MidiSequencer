@@ -20,8 +20,13 @@ The bottom right red blinking button is used for switching between a mode / sett
     4/2: Enable / Disable notes. Choose base octave. setup chords
 
 # Todo:
-    need a way to change what the tilt sensors do
     would be cool if you could arpeggiate the channels it outputs onto
+    some oscillators would be cool for midi cc values
+    a microphone sensor for playing drums on surfaces would be cool
+    a microphone note detection for midi playback of notes it's picking up
+    tilt sensors to cc / mod / osc mod / pitch bend setting would be nice
+    a simple 8 bit synth
+    a match glitch synth
 
 # Description of workflow
     Note Sequencer -> Keyboard -> Note modifier -> midi output

@@ -48,9 +48,14 @@ void Mode2_Quit() {
 
 void Mode2_resetAllNotes() {
 
-  for (int i = 0; i < 32; i++)
-    if(Mode2NotesPressed[i] > 0)
+  for (int i = 0; i < 32; i++) {
+
+    if(Mode2NotesPressed[i] > 0) {
+    
       noteOff(i, DEFAULT_NOTE_VOLUME);
+      Mode2NotesPressed[i] = 0;
+    }
+  }
 }
 
 void Mode2_Update(int xBend, int yBend) {
