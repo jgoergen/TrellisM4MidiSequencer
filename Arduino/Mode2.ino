@@ -20,9 +20,9 @@ extern float flow3Val;
 extern float flow4Val;
 extern bool chords[4][12];
 extern bool modifierActive;
+extern int lastNotePressedIndex;
 
 bool Mode2Latching = false;
-unsigned long Mode2NotesPressed[32];
 bool Mode2LatchUsed = false;
 
 void Mode2_Init() {
@@ -36,26 +36,11 @@ void Mode2_Init() {
 
   Mode2Latching = false;
   Mode2LatchUsed = false;
-
-  for (int i = 0; i < 32; i++)
-    Mode2NotesPressed[i] = 0;
 }
 
 void Mode2_Quit() {
 
-  Mode2_resetAllNotes();
-}
-
-void Mode2_resetAllNotes() {
-
-  for (int i = 0; i < 32; i++) {
-
-    if(Mode2NotesPressed[i] > 0) {
-    
-      noteOff(i, DEFAULT_NOTE_VOLUME);
-      Mode2NotesPressed[i] = 0;
-    }
-  }
+  resetAllNotes();
 }
 
 void Mode2_Update(int xBend, int yBend) {
@@ -100,8 +85,7 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
         return;
       }
 
-      Mode2NotesPressed[key] = 1;
-      noteOn(key, DEFAULT_NOTE_VOLUME);
+      noteOn(key, 1);
 
       if (Mode2Latching)
         Mode2LatchUsed = true;
@@ -119,7 +103,7 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
           if (!Mode2LatchUsed) {
             
             // if latch was pressed and released without actually latching any keys, turn them all off
-            Mode2_resetAllNotes();
+            resetAllNotes();
             Mode2_DrawAllKeyboardKeys();
           }
 
@@ -143,9 +127,7 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
       if (!Mode2Latching) {
 
         Mode2LatchUsed = true;
-        Mode2NotesPressed[key] = 0;
-        noteOff(key, DEFAULT_NOTE_VOLUME);
-
+        noteOff(key);
       }
 
       break;
@@ -166,7 +148,7 @@ float Mode2SignedColFlowVal;
 
 void Mode2_DrawKey(uint8_t key) {
 
-  Mode2Highlight = Mode2NotesPressed[key];
+  Mode2Highlight = notesPressed[key];
   Mode2Sharp = isSharpKey(key);
   Mode2Row = floor(key / 8);
   Mode2Col = key % 8;
@@ -188,8 +170,9 @@ void Mode2_DrawKey(uint8_t key) {
       break;
   }
 
-  if (Mode2Highlight) {
+  if (Mode2Highlight > 0) {
 
+    // note is playing
     if (Mode2Sharp)
       trellis.setPixelColor(key, rgbToHex(0, 0, 0));
     else
@@ -197,6 +180,7 @@ void Mode2_DrawKey(uint8_t key) {
       
   } else {    
     
+    // note is note playing
     if (Mode2Sharp) {
 
       trellis.setPixelColor(

@@ -29,6 +29,14 @@ int midiChannel = 0;
 unsigned long states[32];
 unsigned long lastBeatTime = 0;
 unsigned long lastClockTime = 0;
+unsigned long notesPressed[32]; // keeps track of notes that are playing
+unsigned long notesPressedContext[32]; // keeps track of what each played note is doing 
+unsigned long lastModNotesPlayed[32]; // keeps track of what the last note each mod has played
+unsigned long modSteps[16];
+int modDivisor = 8;
+int modOctaves = 1;
+int modStyle = 0;
+int lastNotePressedIndex = 0;
 int lastXBend = 0;
 int lastYBend = 0;
 int bpm = DEFAULT_BPM;
@@ -89,6 +97,19 @@ void setup() {
   
   Serial.println("Completed Setup");
 
+  // populate initial arrays
+  int i = 0;
+  
+  for (i = 0; i < 32; i++) {
+
+    notesPressed[i] = 0;
+    notesPressedContext[i] = 0;
+    lastModNotesPlayed[i] = 0;
+  }
+
+  for (i = 0; i < 16; i++)
+    modSteps[i] = i;
+
   resetFlowValues();
   Intro_Run();
 }
@@ -115,7 +136,8 @@ void loop() {
 
     // update bpm fader
     bpmFadeCounter ++;
-    if (bpmFadeCounter == 32) bpmFadeCounter = 0;
+    if (bpmFadeCounter == 32) 
+      bpmFadeCounter = 0;
 
     if (inSystemMenu) {
 
@@ -125,6 +147,17 @@ void loop() {
     
       updateFlow();
       updateMode(lastXBend, lastYBend);
+
+      // run arps and chords, etc.
+      Serial.print("bpmFadeCounter check ");
+      Serial.print(bpmFadeCounter);
+      Serial.print(" ");
+      Serial.print(modDivisor);
+      Serial.print(" ");
+      Serial.println((bpmFadeCounter % modDivisor));
+      
+      if ((bpmFadeCounter % modDivisor) == 0)
+        noteModifierUpdate();
     }
     
     lastBeatTime = t;
@@ -135,29 +168,87 @@ void loop() {
   trellis.sendMIDI();
 }
 
-// MISC FUNCTIONS ///////////////////////////////////////////////////////////////
+// NOTE MODIFIER ////////////////////////////////////////////////////////////////
 
-void noteOn(int key, int volume) {
+void noteModifierUpdate() {
 
-  if (inSystemMenu)
-    return;
+  Serial.print("Modding!");
 
-  if (modifierActive) {
+  // note == 0 == off
+  // note == 1 == on
+  // note == 2 == 
+  // note >= 10 == running a mode, step = note - 10
+  
+  for (int i = 0; i < 32; i++) {
+
+    // add new mods?
+    if (modifierActive) {
     
-      // TODO: note modifier stuff happens here
+      // this note is playing but hasn't entered into the mod system yet, start it
+      if(notesPressedContext[i] == 1) {
 
+        Serial.println("Found a note to mod!");
+
+        // 10 == step 0
+        notesPressedContext[i] == 10;
+      }
+    }
+
+    if (notesPressedContext[i] >= 10) {
+
+      int currModStep = modSteps[notesPressedContext[i] - 10];
+
+      if (notesPressedContext[lastModNotesPlayed[i]] == 2) {
+
+        // if it's a note that's been played by the mod, stop it
+        noteOff(lastModNotesPlayed[i]);
+      } 
+      
+      if (currModStep != 6 && currModStep > 0 && currModStep < 14) {
+
+        // it's an arppegated note
+        lastModNotesPlayed[i] = notesPressed[i] + (currModStep - 6);
+        noteOn(lastModNotesPlayed[i], 2);
+      }
+    }
   }
-
-  trellis.noteOn(
-    (12 * getNoteOctaveFromKey(key)) + getNoteIndexFromKey(key), 
-    volume);
 }
 
-void noteOff(int key, int volume) {
+// MISC FUNCTIONS ///////////////////////////////////////////////////////////////
+
+void resetAllNotes() {
+
+  for (int i = 0; i < 32; i++)
+    if(notesPressed[i] > 0)
+      noteOff(i);
+}
+
+void noteOn(int key, int initialValue) {
+
+  // if we're in a system menu, or this note is already pressed, then ignore this
+  if (inSystemMenu || notesPressed[key] == 1)
+    return;
+
+  notesPressed[key] = 1;
+  notesPressedContext[key] = initialValue;
+
+  // TODO: we need allow volume changing
+  trellis.noteOn(
+    (12 * getNoteOctaveFromKey(key)) + getNoteIndexFromKey(key), 
+    DEFAULT_NOTE_VOLUME);
+}
+
+void noteOff(int key) {
+  
+  if (notesPressed[key] == 0)
+    return;
+    
+  notesPressed[key] = 0;
+  notesPressedContext[key] = 0;
 
   trellis.noteOff(
     (12 * getNoteOctaveFromKey(key)) + getNoteIndexFromKey(key), 
-    volume);
+    DEFAULT_NOTE_VOLUME);
 }
 
 int getNoteIndexFromKey(uint8_t key) {
