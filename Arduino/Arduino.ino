@@ -6,7 +6,7 @@
 
 // SETTINGS ///////////////////////////////////////////////////////
 
-#define DEFAULT_BPM           120 
+#define DEFAULT_BPM           120
 #define DEFAULT_OCTAVE        3
 #define DEFAULT_BRIGHTNESS    60
 #define DEFAULT_MIDI_CHANNEL  0
@@ -32,10 +32,10 @@ unsigned long lastClockTime = 0;
 unsigned long notesPressed[32]; // keeps track of notes that are playing
 unsigned long notesPressedContext[32]; // keeps track of what each played note is doing 
 unsigned long lastModNotesPlayed[32]; // keeps track of what the last note each mod has played
-unsigned long modSteps[16];
+int modSteps[16];
 int modDivisor = 8;
-int modOctaves = 1;
 int modStyle = 0;
+int modDirection = 0;
 int lastNotePressedIndex = 0;
 int lastXBend = 0;
 int lastYBend = 0;
@@ -67,6 +67,8 @@ bool chords[4][12] = {
   {true, true, true, true, true, true, true, true, true, true, true, true},
   {true, true, true, true, true, true, true, true, true, true, true, true}
 };
+bool latchingActive = false;
+bool latchingUsed = false;
 
 Adafruit_NeoTrellisM4 trellis = Adafruit_NeoTrellisM4();
 Adafruit_ADXL343 accel = Adafruit_ADXL343(123, &Wire1);
@@ -107,8 +109,9 @@ void setup() {
     lastModNotesPlayed[i] = 0;
   }
 
+  // set all modsteps to off ( 6 )
   for (i = 0; i < 16; i++)
-    modSteps[i] = i;
+    modSteps[i] = 0;
 
   resetFlowValues();
   Intro_Run();
@@ -149,12 +152,12 @@ void loop() {
       updateMode(lastXBend, lastYBend);
 
       // run arps and chords, etc.
-      Serial.print("bpmFadeCounter check ");
+      /*Serial.print("bpmFadeCounter check ");
       Serial.print(bpmFadeCounter);
       Serial.print(" ");
       Serial.print(modDivisor);
       Serial.print(" ");
-      Serial.println((bpmFadeCounter % modDivisor));
+      Serial.println((bpmFadeCounter % modDivisor));*/
       
       if ((bpmFadeCounter % modDivisor) == 0)
         noteModifierUpdate();
@@ -172,7 +175,7 @@ void loop() {
 
 void noteModifierUpdate() {
 
-  Serial.print("Modding!");
+  // Serial.print("Modding!");
 
   // note == 0 == off
   // note == 1 == on
@@ -187,30 +190,89 @@ void noteModifierUpdate() {
       // this note is playing but hasn't entered into the mod system yet, start it
       if(notesPressedContext[i] == 1) {
 
-        Serial.println("Found a note to mod!");
-
         // 10 == step 0
-        notesPressedContext[i] == 10;
+        notesPressedContext[i] = 10;
       }
     }
 
+    if (notesPressedContext[lastModNotesPlayed[i]] == 2) {
+
+      // if it's a note that's been played by the mod, stop it
+      noteOff(lastModNotesPlayed[i]);
+    } 
+      
     if (notesPressedContext[i] >= 10) {
 
       int currModStep = modSteps[notesPressedContext[i] - 10];
 
-      if (notesPressedContext[lastModNotesPlayed[i]] == 2) {
+      if (currModStep == 14) {
 
-        // if it's a note that's been played by the mod, stop it
-        noteOff(lastModNotesPlayed[i]);
-      } 
+        // restart mod
+        if (modDirection == 0)
+          notesPressedContext[i] = 9;
+        else
+          notesPressedContext[i] = 26;
+
+        runModifierPlayhead(i);
+        currModStep = modSteps[notesPressedContext[i] - 10];
+
+      } else if (currModStep == 15) {
+
+        // reverse mod
+        if (modDirection == 0)
+          modDirection = 1;
+        else
+          modDirection = 0;
+
+        runModifierPlayhead(i);
+        currModStep = modSteps[notesPressedContext[i] - 10];
+
+      } else if (currModStep == 16) {
+
+        Serial.println("random");
+        notesPressedContext[i] = (int)random(10, 26);
+        currModStep = modSteps[notesPressedContext[i] - 10];
+      }
       
-      if (currModStep != 6 && currModStep > 0 && currModStep < 14) {
+      Serial.print(notesPressedContext[i]);
+      Serial.print(" ");
+      Serial.println(currModStep);
+
+      if (currModStep > 0 && currModStep < 14) {
 
         // it's an arppegated note
-        lastModNotesPlayed[i] = notesPressed[i] + (currModStep - 6);
+        // ints can't go lower then 0, so we add 32 first, to make a negative number wrap to the high notes
+        int newNoteIndex = 32 + (i + (currModStep - 6));
+        if (newNoteIndex > 31)
+          newNoteIndex -= 32;
+
+        lastModNotesPlayed[i] = newNoteIndex;
         noteOn(lastModNotesPlayed[i], 2);
+      
       }
+
+      runModifierPlayhead(i);
     }
+  }
+}
+
+void runModifierPlayhead(int note) {
+
+  // pregress by one step
+  if (modDirection == 0)
+    notesPressedContext[note] ++;
+  else
+    notesPressedContext[note] --;
+
+  // if we've hit 16 steps, reset to 0 ( + 10 )
+  if (notesPressedContext[note] > 10 + 15) {
+
+    notesPressedContext[note] = 10;
+  }
+
+  if (notesPressedContext[note] == 9) {
+
+    notesPressedContext[note] = 25;
   }
 }
 
@@ -223,14 +285,19 @@ void resetAllNotes() {
       noteOff(i);
 }
 
+void registerNote(int key, int initialValue) {
+
+  notesPressed[key] = 1;
+  notesPressedContext[key] = initialValue;
+}
+
 void noteOn(int key, int initialValue) {
 
   // if we're in a system menu, or this note is already pressed, then ignore this
   if (inSystemMenu || notesPressed[key] == 1)
     return;
 
-  notesPressed[key] = 1;
-  notesPressedContext[key] = initialValue;
+  registerNote(key, initialValue);
 
   // TODO: we need allow volume changing
   trellis.noteOn(

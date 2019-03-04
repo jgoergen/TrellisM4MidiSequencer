@@ -21,9 +21,8 @@ extern float flow4Val;
 extern bool chords[4][12];
 extern bool modifierActive;
 extern int lastNotePressedIndex;
-
-bool Mode2Latching = false;
-bool Mode2LatchUsed = false;
+extern bool latchingActive;
+extern bool latchingUsed;
 
 void Mode2_Init() {
 
@@ -34,13 +33,14 @@ void Mode2_Init() {
   Mode2_DrawAllKeyboardKeys();
   Mode2_DrawSpecialKeys();
 
-  Mode2Latching = false;
-  Mode2LatchUsed = false;
+  latchingActive = false;
+  latchingUsed = false;
 }
 
 void Mode2_Quit() {
 
-  resetAllNotes();
+  if (!modifierActive)
+    resetAllNotes();
 }
 
 void Mode2_Update(int xBend, int yBend) {
@@ -75,8 +75,8 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
 
         if (key == 24) {
 
-          Mode2Latching = true;
-          Mode2LatchUsed = false;
+          latchingActive = true;
+          latchingUsed = false;
         }
 
         if (key == 25)
@@ -85,10 +85,13 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
         return;
       }
 
-      noteOn(key, 1);
+      if (!modifierActive)
+        noteOn(key, 1);
+      else 
+        registerNote(key, 1);
 
-      if (Mode2Latching)
-        Mode2LatchUsed = true;
+      if (latchingActive)
+        latchingUsed = true;
         
       break;
 
@@ -100,15 +103,15 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
 
         if (key == 24) {
 
-          if (!Mode2LatchUsed) {
+          if (!latchingUsed) {
             
             // if latch was pressed and released without actually latching any keys, turn them all off
             resetAllNotes();
             Mode2_DrawAllKeyboardKeys();
           }
 
-          Mode2Latching = false;
-          Mode2LatchUsed = false;
+          latchingActive = false;
+          latchingUsed = false;
         }
 
         if (key == 25)
@@ -124,9 +127,9 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
         return;
       }
 
-      if (!Mode2Latching) {
+      if (!latchingActive) {
 
-        Mode2LatchUsed = true;
+        latchingUsed = true;
         noteOff(key);
       }
 
@@ -210,7 +213,7 @@ void Mode2_DrawAllKeyboardKeys() {
 
 void Mode2_DrawSpecialKeys() {
 
-  if (Mode2Latching)
+  if (latchingActive)
     trellis.setPixelColor(24, rgbToHex(255, 255, 255));
   else
     trellis.setPixelColor(24, rgbToHex(50, 140, 250));

@@ -133,6 +133,15 @@ void Mode25_KeyEvent(uint8_t key, uint8_t type) {
     case 2:
 
       // long press
+      if (key < 12) {
+      
+        for (int i = 0; i < 12; i++)
+          notes[i] = false;
+
+        notes[key] = true;
+        Mode25_GetSelectedCount();
+        Mode25_DrawNotes();
+      }
 
       // they long pressed a chord key, save it
       if (key >= 27 && key <= 30) {
