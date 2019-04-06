@@ -9,49 +9,47 @@
 // https://www.pianoscales.org/chart.html
 const bool Mode25MajorChords[12][12] = {
   {true, false, true, false, true, true, false, true, false, true, false, true}, // c major 0 2 4 5 7 9 11
-  {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 1 3 5 6 8 10 0
-  {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 2 4 6 7 9 11 1
-  {true, false, false, true, false, true, false, true, true, false, true, false}, // d# major 3 5 7 8 10 0
-  {false, true, false, true, true, false, true, false, true, true, false, true}, // e major 4 6 8 9 11 1 3
-  {true, false, true, false, true, true, false, true, false, true, true, false}, // f major 5 7 9 10 0 2 4
-  {false, true, false, true, false, true, true, false, true, false, true, true}, // f# major 6 8 9 10 11 1 3 5
-  {true, false, true, false, true, false, true, true, false, true, false, true}, // g major 7 9 11 0 2 4 6
-  {true, true, false, true, false, true, false, true, true, false, true, false}, // g# major 8 10 0 1 3 5 7
-  {false, true, true, false, true, false, true, false, true, true, false, true}, // a major 9 11 1 2 4 6 8
-  {true, false, true, true, false, true, false, true, false, true, true, false}, // a# major 10 0 2 3 5 7 9
-  {false, true, false, true, true, false, true, false, true, false, true, true} // b major 11 1 3 4 6 8 10
+  {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 0 1 3 5 6 8 10 
+  {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 1 2 4 6 7 9 11 
+  {true, false, false, true, false, true, false, true, true, false, true, false}, // d# major 0 3 5 7 8 10 
+  {false, true, false, true, true, false, true, false, true, true, false, true}, // e major 1 3 4 6 8 9 11 
+  {true, false, true, false, true, true, false, true, false, true, true, false}, // f major 0 2 4 5 7 9 10 
+  {false, true, false, true, false, true, true, false, true, false, true, true}, // f# major 1 3 5 6 8 9 10 11 
+  {true, false, true, false, true, false, true, true, false, true, false, true}, // g major 0 2 4 6 7 9 11 
+  {true, true, false, true, false, true, false, true, true, false, true, false}, // g# major 0 1 3 5 7 8 10 
+  {false, true, true, false, true, false, true, false, true, true, false, true}, // a major 1 2 4 6 8 9 11 
+  {true, false, true, true, false, true, false, true, false, true, true, false}, // a# major 0 2 3 5 7 9 10 
+  {false, true, false, true, true, false, true, false, true, false, true, true} // b major 1 3 4 6 8 10 11 
 }; 
 
-// TODO: set these up!
 const bool Mode25MinorChords[12][12] = {
-  {true, false, true, false, true, true, false, true, false, true, false, true}, // c major 0 2 4 5 7 9 11
-  {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 1 3 5 6 8 10 0
-  {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 2 4 6 7 9 11 1
-  {true, false, false, true, false, true, false, true, true, false, true, false}, // d# major 3 5 7 8 10 0
-  {false, true, false, true, true, false, true, false, true, true, false, true}, // e major 4 6 8 9 11 1 3
-  {true, false, true, false, true, true, false, true, false, true, true, false}, // f major 5 7 9 10 0 2 4
-  {false, true, false, true, false, true, true, false, true, false, true, true}, // f# major 6 8 9 10 11 1 3 5
-  {true, false, true, false, true, false, true, true, false, true, false, true}, // g major 7 9 11 0 2 4 6
-  {true, true, false, true, false, true, false, true, true, false, true, false}, // g# major 8 10 0 1 3 5 7
-  {false, true, true, false, true, false, true, false, true, true, false, true}, // a major 9 11 1 2 4 6 8
-  {true, false, true, true, false, true, false, true, false, true, true, false}, // a# major 10 0 2 3 5 7 9
-  {false, true, false, true, true, false, true, false, true, false, true, true} // b major 11 1 3 4 6 8 10
+  {true, false, true, false, true, true, false, true, false, true, false, true}, // c minor	 0 2 4 5 7 9 11
+  {true, true, false, true, false, true, true, false, true, false, true, false}, // c# minor 0 1 3 5 6 8 10
+  {false, true, true, false, true, false, true, true, false, true, false, true}, // d minor  1 2 4 6 7 9 11
+  {true, false, true, true, false, true, false, true, true, false, true, false}, // d# minor 0 2 3 5 7 8 10
+  {false, true, false, true, true, false, true, false, true, true, false, true}, // e minor  1 3 4 6 8 9 11
+  {true, false, true, false, true, true, false, true, false, true, true, false}, // f minor  0 2 4 5 7 9 10
+  {false, true, false, true, false, true, true, false, true, false, true, true}, // f# minor 1 3 5 6 8 10 11
+  {true, false, true, false, true, false, false, true, false, true, false, true}, // g minor  0 2 4 6 7 9 11
+  {true, true, false, true, false, true, false, true, true, false, true, false}, // g# minor 0 1 3 5 7 8 10
+  {false, true, true, false, true, false, true, false, true, true, false, true}, // a minor  1 2 4 6 8 9 11
+  {true, false, true, true, false, true, false, true, false, true, true, false}, // a# minor 0 2 3 5 7 9 10
+  {false, true, false, true, true, false, true, false, true, false, false, true} // b minor  1 3 4 6 8 10 11
 }; 
 
-// TODO: set these up!
 const bool Mode25PentatonicChords[12][12] = {
-  {true, false, true, false, true, true, false, true, false, true, false, true}, // c major 0 2 4 5 7 9 11
-  {true, true, false, true, false, true, true, false, true, false, true, false}, // c# major 1 3 5 6 8 10 0
-  {false, true, true, false, true, false, true, true, false, true, false, true}, // d major 2 4 6 7 9 11 1
-  {true, false, false, true, false, true, false, true, true, false, true, false}, // d# major 3 5 7 8 10 0
-  {false, true, false, true, true, false, true, false, true, true, false, true}, // e major 4 6 8 9 11 1 3
-  {true, false, true, false, true, true, false, true, false, true, true, false}, // f major 5 7 9 10 0 2 4
-  {false, true, false, true, false, true, true, false, true, false, true, true}, // f# major 6 8 9 10 11 1 3 5
-  {true, false, true, false, true, false, true, true, false, true, false, true}, // g major 7 9 11 0 2 4 6
-  {true, true, false, true, false, true, false, true, true, false, true, false}, // g# major 8 10 0 1 3 5 7
-  {false, true, true, false, true, false, true, false, true, true, false, true}, // a major 9 11 1 2 4 6 8
-  {true, false, true, true, false, true, false, true, false, true, true, false}, // a# major 10 0 2 3 5 7 9
-  {false, true, false, true, true, false, true, false, true, false, true, true} // b major 11 1 3 4 6 8 10
+  {true, false, true, false, true, false, false, true, false, true, false, false}, // c pent   0 2 4 7 9
+  {false, true, false, true, false, true, false, false, true, false, true, false}, // c# pent  1 3 5 8 10
+  {false, false, true, false, true, false, true, false, false, true, false, true}, // d pent   2 4 6 9 11
+  {true, false, false, true, false, true, false, true, false, false, true, false}, // d# pent  0 3 5 7 10
+  {false, true, false, false, true, false, true, false, true, false, false, true}, // e pent   1 4 6 8 11
+  {true, false, true, false, false, true, false, true, false, true, false, false}, // f pent   0 2 5 7 9
+  {false, true, false, true, false, false, true, false, true, false, true, false}, // f# pent  1 3 6 8 10
+  {false, false, true, false, true, false, false, true, false, true, false, true}, // g pent   2 4 7 9 11
+  {true, false, false, true, false, true, false, false, true, false, true, false}, // g# pent  0 3 5 8 10
+  {false, true, false, false, true, false, true, false, false, true, false, true}, // a pent   1 4 6 9 11
+  {true, false, true, false, false, true, false, true, false, false, true, false}, // a# pent  0 2 5 7 10
+  {false, true, false, true, false, false, true, false, true, false, false, true} // b pent   1 3 6 8 11
 }; 
   
 ///////////////////////////////////////////////////////////////////
@@ -113,6 +111,8 @@ void Mode25_KeyEvent(uint8_t key, uint8_t type) {
       if (key > 15 && key < 24) {
 
         octave = key - 15;
+        Serial.print("Octave ");
+        Serial.println(octave);
         Mode25_DrawOctaves();
       }
 
@@ -135,10 +135,21 @@ void Mode25_KeyEvent(uint8_t key, uint8_t type) {
       // long press
       if (key < 12) {
       
-        for (int i = 0; i < 12; i++)
-          notes[i] = false;
+        if (notes[key] == true && Mode25SelectedCount == 1) {
 
-        notes[key] = true;
+          // long press on the only note selected enabled all notes
+          for (int i = 0; i < 12; i++)
+            notes[i] = true;
+
+        } else {
+
+          // long press on any note that isn't the only note enabled selected only that note
+          for (int i = 0; i < 12; i++)
+            notes[i] = false;
+
+          notes[key] = true;
+        }
+
         Mode25_GetSelectedCount();
         Mode25_DrawNotes();
       }
@@ -233,13 +244,13 @@ void Mode25_RecallChord(int which) {
   Mode25_DrawNotes();
   trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
   trellis.showPixels();
-  delay(3);
+  delay(BLINK_SPEED);
   trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
   trellis.showPixels();
-  delay(3);
+  delay(BLINK_SPEED);
   trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
   trellis.showPixels();
-  delay(3);
+  delay(BLINK_SPEED);
   trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
   trellis.showPixels();
 }
@@ -254,13 +265,13 @@ void Mode25_SetChord(int which) {
   Mode25_DrawNotes();
   trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
   trellis.showPixels();
-  delay(3);
+  delay(BLINK_SPEED);
   trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
   trellis.showPixels();
-  delay(3);
+  delay(BLINK_SPEED);
   trellis.setPixelColor(27 + which, rgbToHex(0, 0, 0));
   trellis.showPixels();
-  delay(3);
+  delay(BLINK_SPEED);
   trellis.setPixelColor(27 + which, rgbToHex(80, 120, 200));
   trellis.showPixels();
 }

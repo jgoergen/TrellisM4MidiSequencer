@@ -55,11 +55,6 @@ void Mode3_Init() {
   Mode3_DrawSteps();
   Mode3_DrawDivisors();
   Mode3_DrawStyle();
-
-  // if the keyboard was latching, latching was used and modifier is used, then play the notes until they leave
-  for (int i = 0; i < 32; i++)
-    if (notesPressed[i])
-      noteOn(i, 1);
 }
 
 void Mode3_Quit() {
@@ -72,6 +67,7 @@ void Mode3_Update(int xBend, int yBend) {
   // if the arp is running, draw a cursor over the position being played
   Mode3_DrawSteps();
   Mode3_DrawCursors();
+  Mode3_DrawModDirection();
 }
 
 void Mode3_KeyEvent(uint8_t key, uint8_t type) {
@@ -110,6 +106,8 @@ void Mode3_KeyEvent(uint8_t key, uint8_t type) {
           modDirection = 1;
         else
           modDirection = 0;
+
+        Mode3_DrawModDirection();
 
       } else if (key > 17 && key < 23) {
 
@@ -164,6 +162,7 @@ void Mode3_KeyEvent(uint8_t key, uint8_t type) {
       }  else if (key == 17) {
 
         modDirection = 0;
+        Mode3_DrawModDirection();
       }
 
       break;
@@ -212,11 +211,6 @@ void Mode3_DrawCursors() {
 
   for (int i = 0; i < 32; i++) {
 
-    Serial.print(">> ");
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.println(notesPressedContext[i]);
-
     if (notesPressedContext[i] >= 10) {
 
       int modStepIndex = notesPressedContext[i] - 10;
@@ -237,7 +231,10 @@ void Mode3_DrawDivisors() {
   trellis.setPixelColor(21, modDivisor == 8 ? rgbToHex(250, 250, 250) : rgbToHex(200, 50, 200));
   trellis.setPixelColor(22, modDivisor == 16 ? rgbToHex(250, 250, 250) : rgbToHex(240, 50, 240));
   trellis.setPixelColor(23, modDivisor == 32 ? rgbToHex(250, 250, 250) : rgbToHex(250, 50, 255));
+}
 
+void Mode3_DrawModDirection() {
+  
   if (modDirection == 0)
     trellis.setPixelColor(17, rgbToHex(0, 255, 148));
   else

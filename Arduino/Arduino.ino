@@ -16,11 +16,15 @@
 #define MIN_BPM_VALUE         60
 #define BPM_INCREMENT         5
 #define DEFAULT_NOTE_VOLUME   127
+#define DEFAULT_MOD_DIVISOR   8
+#define DEFAULT_SEQ_DIVISOR   4
+#define DEFAULT_SEQ_LAST_STEP 128
 
 // these are used for visuals on some modes
 #define FLOW_SEPERATION       10
 #define FLOW_SPEED            0.5
 #define COL_FLOW_SPEED        0.75
+#define BLINK_SPEED           30
 
 ///////////////////////////////////////////////////////////////////
 
@@ -29,11 +33,12 @@ int midiChannel = 0;
 unsigned long states[32];
 unsigned long lastBeatTime = 0;
 unsigned long lastClockTime = 0;
+unsigned long sequence[128];
 unsigned long notesPressed[32]; // keeps track of notes that are playing
 unsigned long notesPressedContext[32]; // keeps track of what each played note is doing 
 unsigned long lastModNotesPlayed[32]; // keeps track of what the last note each mod has played
 int modSteps[16];
-int modDivisor = 8;
+int modDivisor = DEFAULT_MOD_DIVISOR;
 int modStyle = 0;
 int modDirection = 0;
 int lastNotePressedIndex = 0;
@@ -41,6 +46,8 @@ int lastXBend = 0;
 int lastYBend = 0;
 int bpm = DEFAULT_BPM;
 int beatInterval = 0;
+int sequenceDivisor = DEFAULT_SEQ_DIVISOR;
+int sequenceLastStep = DEFAULT_SEQ_LAST_STEP;
 int clockTimeInterval = 0;
 int mode = DEFAULT_MODE;
 int lastFastClick = NULL_KEY;
@@ -112,6 +119,10 @@ void setup() {
   // set all modsteps to off ( 6 )
   for (i = 0; i < 16; i++)
     modSteps[i] = 0;
+
+  // set all sequence steps to off
+  for i = 0; i < 128; i++)
+    sequence[i] = 0;
 
   resetFlowValues();
   Intro_Run();
@@ -624,6 +635,8 @@ void changeMode(int which) {
 void sendModeKeyEvent(uint8_t key, uint8_t type) {
 
   if (type != 0 && inSystemMenu) {
+
+    // TODO: long press on this starts / stops sequencer
       
     inSystemMenu = false;
     

@@ -35,11 +35,11 @@ void Mode2_Init() {
 
   latchingActive = false;
   latchingUsed = false;
+  modifierActive = false;
 }
 
 void Mode2_Quit() {
 
-  if (!modifierActive)
     resetAllNotes();
 }
 
@@ -51,13 +51,15 @@ void Mode2_Update(int xBend, int yBend) {
 
 void Mode2_KeyEvent(uint8_t key, uint8_t type) {
 
+  /*
   Serial.print("Mode 1 Key Received ");
   Serial.print(key);
   Serial.print(" ");
   Serial.print(type);
   Serial.print(" ");
   Serial.println(states[key]);
-
+  */
+ 
   // TODO: setup a way for modes to have system settings integrated
   // I.E. when the system key is pressed, show mode specific settings on the 3rd row and pass them to the mode
   // catch global settings

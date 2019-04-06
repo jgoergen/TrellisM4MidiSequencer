@@ -2,5 +2,5 @@
     "board": "adafruit:samd:adafruit_trellis_m4",
     "configuration": "cache=on",
     "sketch": "Arduino\\Arduino.ino",
-    "port": "COM5"
+    "port": "COM14"
 }
