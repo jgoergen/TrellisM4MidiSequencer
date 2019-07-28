@@ -81,8 +81,13 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
           latchingUsed = false;
         }
 
-        if (key == 25)
-          modifierActive = true;
+        if (key == 25) {
+
+          if (modifierActive == true)
+            modifierActive = false;
+          else
+            modifierActive = true;
+        }
 
         return;
       }
@@ -115,9 +120,6 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
           latchingActive = false;
           latchingUsed = false;
         }
-
-        if (key == 25)
-          modifierActive = false;
 
         // they pressed a chord key, recall it
         if (key >= 27 && key <= 30) {
