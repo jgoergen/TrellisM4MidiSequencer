@@ -2,7 +2,6 @@
 
 // SETTINGS ///////////////////////////////////////////////////////
 
-
 ///////////////////////////////////////////////////////////////////
 
 extern unsigned long states[32];
@@ -24,8 +23,8 @@ extern int lastNotePressedIndex;
 extern bool latchingActive;
 extern bool latchingUsed;
 
-void Mode2_Init() {
-
+void Mode2_Init()
+{
   Serial.println("Mode 1 Initialized");
 
   setupNoteMap();
@@ -38,19 +37,19 @@ void Mode2_Init() {
   modifierActive = false;
 }
 
-void Mode2_Quit() {
-
-    resetAllNotes();
+void Mode2_Quit()
+{
+  resetAllNotes();
 }
 
-void Mode2_Update(int xBend, int yBend) {
-
+void Mode2_Update(int xBend, int yBend)
+{
   Mode2_DrawAllKeyboardKeys();
   Mode2_DrawSpecialKeys();
 }
 
-void Mode2_KeyEvent(uint8_t key, uint8_t type) {
-
+void Mode2_KeyEvent(uint8_t key, uint8_t type)
+{
   /*
   Serial.print("Mode 1 Key Received ");
   Serial.print(key);
@@ -59,7 +58,7 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
   Serial.print(" ");
   Serial.println(states[key]);
   */
- 
+
   // TODO: setup a way for modes to have system settings integrated
   // I.E. when the system key is pressed, show mode specific settings on the 3rd row and pass them to the mode
   // catch global settings
@@ -68,81 +67,90 @@ void Mode2_KeyEvent(uint8_t key, uint8_t type) {
   //  return;
   //}
 
-  switch(type) {
-
-    case 0: // down
-
-      // special keyboard keys
-      if (key >= 24) {
-
-        if (key == 24) {
-
-          latchingActive = true;
-          latchingUsed = false;
-        }
-
-        if (key == 25) {
-
-          if (modifierActive == true)
-            modifierActive = false;
-          else
-            modifierActive = true;
-        }
-
-        return;
+  switch (type)
+  {
+  case 0: // down
+    // special keyboard keys
+    if (key >= 24)
+    {
+      if (key == 24)
+      {
+        latchingActive = true;
+        latchingUsed = false;
       }
 
-      if (!modifierActive)
-        noteOn(key, 1);
-      else 
-        registerNote(key, 1);
-
-      if (latchingActive)
-        latchingUsed = true;
-        
-      break;
-
-    case 1: // regular press
-    case 2: // long press
-
-      // special keyboard keys
-      if (key >= 24) {
-
-        if (key == 24) {
-
-          if (!latchingUsed) {
-            
-            // if latch was pressed and released without actually latching any keys, turn them all off
-            resetAllNotes();
-            Mode2_DrawAllKeyboardKeys();
-          }
-
-          latchingActive = false;
-          latchingUsed = false;
+      if (key == 25)
+      {
+        if (modifierActive == true)
+        {
+          modifierActive = false;
         }
+        else
+        {
+          modifierActive = true;
+        }
+      }
 
-        // they pressed a chord key, recall it
-        if (key >= 27 && key <= 30) {
+      return;
+    }
 
-          Mode2_RecallChord(key - 27);
+    if (!modifierActive)
+    {
+      noteOn(key, 1);
+    }
+    else
+    {
+      registerNote(key, 1);
+    }
+
+    if (latchingActive)
+    {
+      latchingUsed = true;
+    }
+
+    break;
+
+  case 1: // regular press
+  case 2: // long press
+
+    // special keyboard keys
+    if (key >= 24)
+    {
+      if (key == 24)
+      {
+        if (!latchingUsed)
+        {
+          // if latch was pressed and released without actually latching any keys, turn them all off
+          resetAllNotes();
           Mode2_DrawAllKeyboardKeys();
         }
-      
-        return;
+
+        latchingActive = false;
+        latchingUsed = false;
       }
 
-      if (!latchingActive) {
-
-        latchingUsed = true;
-        noteOff(key);
+      // they pressed a chord key, recall it
+      if (key >= 27 && key <= 30)
+      {
+        Mode2_RecallChord(key - 27);
+        Mode2_DrawAllKeyboardKeys();
       }
 
-      break;
-      
-    case 3: 
-      
-      // double press
-      break;
+      return;
+    }
+
+    if (!latchingActive)
+    {
+      latchingUsed = true;
+      noteOff(key);
+    }
+
+    break;
+
+  case 3:
+
+    // double press
+    break;
   }
 }
 
@@ -153,8 +161,8 @@ int Mode2Col;
 int Mode2ColorBaseVal;
 float Mode2SignedColFlowVal;
 
-void Mode2_DrawKey(uint8_t key) {
-
+void Mode2_DrawKey(uint8_t key)
+{
   Mode2Highlight = notesPressed[key];
   Mode2Sharp = isSharpKey(key);
   Mode2Row = floor(key / 8);
@@ -162,70 +170,81 @@ void Mode2_DrawKey(uint8_t key) {
   Mode2ColorBaseVal = 0;
   Mode2SignedColFlowVal = sin(colFlowVal / 255);
 
-  switch(Mode2Row) {
-    case 0:
-      Mode2ColorBaseVal = flow1Val;
-      break;
-    case 1:
-      Mode2ColorBaseVal = flow2Val;
-      break;
-    case 2:
-      Mode2ColorBaseVal = flow3Val;
-      break;
-    case 3:
-      Mode2ColorBaseVal = flow4Val;
-      break;
+  switch (Mode2Row)
+  {
+  case 0:
+    Mode2ColorBaseVal = flow1Val;
+    break;
+  case 1:
+    Mode2ColorBaseVal = flow2Val;
+    break;
+  case 2:
+    Mode2ColorBaseVal = flow3Val;
+    break;
+  case 3:
+    Mode2ColorBaseVal = flow4Val;
+    break;
   }
 
-  if (Mode2Highlight > 0) {
-
+  if (Mode2Highlight > 0)
+  {
     // note is playing
     if (Mode2Sharp)
       trellis.setPixelColor(key, rgbToHex(0, 0, 0));
     else
       trellis.setPixelColor(key, rgbToHex(50, 50, 50));
-      
-  } else {    
-    
+  }
+  else
+  {
     // note is note playing
-    if (Mode2Sharp) {
-
+    if (Mode2Sharp)
+    {
       trellis.setPixelColor(
-        key, 
-        rgbToHex(
-          floor((255 - Mode2ColorBaseVal)),
-          floor((100 + (Mode2SignedColFlowVal * 80) + Mode2Col * 8)),
-          floor(Mode2SignedColFlowVal * 80)));
-    
-    } else {
-
+          key,
+          rgbToHex(
+              floor((255 - Mode2ColorBaseVal)),
+              floor((100 + (Mode2SignedColFlowVal * 80) + Mode2Col * 8)),
+              floor(Mode2SignedColFlowVal * 80)));
+    }
+    else
+    {
       trellis.setPixelColor(
-        key, 
-        rgbToHex(
-          255 - Mode2ColorBaseVal,
-          floor((100 + (Mode2SignedColFlowVal * 80) + Mode2Col * 8)),
-          150 + floor(Mode2SignedColFlowVal * 80)));
+          key,
+          rgbToHex(
+              255 - Mode2ColorBaseVal,
+              floor((100 + (Mode2SignedColFlowVal * 80) + Mode2Col * 8)),
+              150 + floor(Mode2SignedColFlowVal * 80)));
     }
   }
 }
 
-void Mode2_DrawAllKeyboardKeys() {
-
-  for (int i = 0; i < 24; i++) 
+void Mode2_DrawAllKeyboardKeys()
+{
+  for (int i = 0; i < 24; i++)
+  {
     Mode2_DrawKey(i);
+  }
 }
 
-void Mode2_DrawSpecialKeys() {
-
+void Mode2_DrawSpecialKeys()
+{
   if (latchingActive)
+  {
     trellis.setPixelColor(24, rgbToHex(255, 255, 255));
+  }
   else
+  {
     trellis.setPixelColor(24, rgbToHex(50, 140, 250));
+  }
 
   if (modifierActive)
+  {
     trellis.setPixelColor(25, rgbToHex(255, 255, 255));
+  }
   else
+  {
     trellis.setPixelColor(25, rgbToHex(50, 250, 140));
+  }
 
   trellis.setPixelColor(27, rgbToHex(80, 120, 200));
   trellis.setPixelColor(28, rgbToHex(80, 120, 200));
@@ -233,10 +252,12 @@ void Mode2_DrawSpecialKeys() {
   trellis.setPixelColor(30, rgbToHex(80, 120, 200));
 }
 
-void Mode2_RecallChord(int which) {
-
+void Mode2_RecallChord(int which)
+{
   for (int i = 0; i < 12; i++)
+  {
     notes[i] = chords[which][i];
+  }
 
   setupNoteMap();
   Mode2_DrawAllKeyboardKeys();
